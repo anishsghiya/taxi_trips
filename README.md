@@ -12,3 +12,7 @@ The streamlit app file (named streamlit_test) contains the code for the streamli
     3. The command line will gave a localhost http to see the app if the window does not automatically pop up
 
 ![](Visualizations/cmd_run_streamlit.png)
+
+## This is what the app looks like right now
+
+![](Visualizations/app_screenshot_comp.png)
