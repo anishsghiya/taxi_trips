@@ -1,0 +1,11 @@
+os
+pandas
+numpy
+time
+calendar
+matplotlib
+plotly-express
+streamlit
+pydeck
+yellowbrick
+scikit-learn

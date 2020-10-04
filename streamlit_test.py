@@ -1,22 +1,32 @@
-import streamlit as st
-import pandas as pd
-from PIL import Image
-import matplotlib.pyplot as plt
-import plotly.express as px
-import time
-import calendar
+import  os
+import  warnings
+import  time
+import  calendar
 
+import  streamlit           as st
+import  pandas              as pd
+import  numpy               as np
+import  matplotlib.pyplot   as plt
+import  plotly.express      as px
+import  pydeck              as pdk
+import  seaborn             as sns
 
-# data_loc = ("E:/Vit/Sem - 5/Project/Data_viz/nyc_taxi_data_viz/train.csv", nrows=10000)
+from    PIL                            import Image
+from    yellowbrick.model_selection    import FeatureImportances
+from    sklearn.linear_model           import Lasso
+
+warnings.simplefilter("ignore")
+
 @st.cache(persist = True)
 def data_loader():
     data = pd.read_csv("E:/Vit/Sem - 5/Project/Data_viz/nyc_taxi_data_viz/train.csv", nrows=10000)
     data['counter'] = 0
+    data['pickup_datetime'] = pd.DatetimeIndex(data['pickup_datetime'])
     data['pickup_dow'] = pd.DatetimeIndex(data['pickup_datetime']).weekday
     data['dropoff_dow'] = pd.DatetimeIndex(data['dropoff_datetime']).weekday
-    #Extracting hour
     data['pickup_hour'] = pd.DatetimeIndex(data['pickup_datetime']).hour
     data['dropoff_hour'] = pd.DatetimeIndex(data['dropoff_datetime']).hour
+    data['pickup_month'] = pd.DatetimeIndex(data['dropoff_datetime']).month
     return data
 
 st.beta_set_page_config(page_title='DV_Project')
@@ -25,12 +35,15 @@ st.sidebar.markdown("# Navigation")
 page = st.sidebar.radio("", ('Home', 'Datasets', 'EDA', 'ML', 'About Us'))
 
 df = data_loader()
+cwd = os.getcwd()
 
 if page == 'Home':
     '''
     # Visualizing taxi trips
     '''
-    image = Image.open('img_home.jpg')
+    
+    path = cwd + '\Visualizations\img_home.jpg'
+    image = Image.open(path)
     st.image(image, caption='', width = 500, use_column_width=False )
 
 elif page == 'Datasets':
@@ -39,13 +52,12 @@ elif page == 'Datasets':
     '''
     is_check = st.checkbox("Display Complete Data")
     if is_check:
-        st.write(df.head())
-    teams = st.sidebar.multiselect("Enter clubs", df['vendor_id'].unique())
-    variables = st.sidebar.multiselect("Enter the variables", df.columns)
-
-    selected_club_data = df[(df['vendor_id'].isin(teams))]
+        st.write(df.head(15))
+    teams = st.sidebar.selectbox("Enter Vendor", df['vendor_id'].unique())
+    variables = st.sidebar.multiselect("Enter the variables to view the raw data", df.columns)
+    selected_club_data = df[(df['vendor_id'] == teams)]
     two_clubs_data = selected_club_data[variables]
-    club_data_is_check = st.checkbox("Display the data of selected clubs")
+    club_data_is_check = st.checkbox("Display the data of selected variables of the particular vendor")
     if club_data_is_check:
         st.write(two_clubs_data)
 
@@ -69,8 +81,6 @@ elif page == 'EDA':
                         text='counter',
                         width=800, height=700)
             fig.update_traces(marker_color='#008000', opacity=0.8)
-
-            # fig.update_layout(template = 'plotly_dark')
             st.plotly_chart(fig)
 
         elif plot_y == 'Day,hour':
@@ -105,48 +115,119 @@ elif page == 'EDA':
             the represented data to viewers of the images. This communication is achieved through the use of a systematic mapping between graphic 
             marks and data values in the creation of the visualization
             '''
-    st.markdown("## Graph visualisations")
+    '''
+    ## Graph Visualiztions
+    '''
+    hour_choice = st.slider("Hour of choice", 0, 23)
     test_data = pd.DataFrame()
-    test_data['lat'] = df['pickup_latitude']
-    test_data['lon'] = df['pickup_longitude']
+    test_data['latitude'] = df['pickup_latitude']
+    test_data['longitude'] = df['pickup_longitude']
+    test_data['date/time'] = df['pickup_datetime']
+    test_data['pickup_hour'] = df['pickup_hour']
+    test_data = test_data[test_data['pickup_hour'] == hour_choice]
+    if st.checkbox("Show raw data", False):
+        st.subheader("Raw data by minute between %i:00 and %i:00" % (hour_choice, (hour_choice + 1) % 24))
+        st.write(test_data.head(15))
+    
+    # st.sidebar.write("Hello")
+    if st.sidebar.button('Interesting Viz'):
+        st.sidebar.write('Why hello there')
+    '''
+    ### 2D Visualization
+    '''
+
     st.map(test_data)
+
+    '''
+    ### 3D Visualization
+    '''
+    midpoint = (np.average(test_data["latitude"]), np.average(test_data["longitude"]))
+    st.write(pdk.Deck(
+        map_style="mapbox://styles/mapbox/light-v9",
+        initial_view_state={
+            "latitude": midpoint[0],
+            "longitude": midpoint[1],
+            "zoom": 11,
+            "pitch": 50,
+        },
+        layers=[
+            pdk.Layer(
+            "HexagonLayer",
+            data=test_data[['date/time', 'latitude', 'longitude']],
+            get_position=["longitude", "latitude"],
+            auto_highlight=True,
+            radius=100,
+            extruded=True,
+            pickable=True,
+            elevation_scale=4,
+            elevation_range=[0, 1000],
+            ),
+            pdk.Layer(
+                "TextLayer",
+                test_data,
+                pickable=True,
+                get_position="coordinates",
+                get_text="name",
+                get_size=16,
+                get_color=[255, 255, 255],
+                get_angle=0,
+                # Note that string constants in pydeck are explicitly passed as strings
+                # This distinguishes them from columns in a data set
+                get_text_anchor="'middle'",
+                get_alignment_baseline="'center'",
+            ),
+
+        ],
+    ))
+    
+    '''
+    ## Correlation of various variables
+    '''
+    train = df.copy()
+    train = train.drop(['counter'],axis=1)
+    f,ax = plt.subplots(figsize = (10,10))
+    sns.heatmap(train.corr(),annot=True,cmap='RdYlGn',linewidths=0.2,annot_kws={'size':10})
+    fig=plt.gcf()
+    fig.set_size_inches(18,15)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    st.pyplot(f)
 
 elif page == 'ML' :
     '''
     # Machine Learning
 
     '''
+    path_vis = cwd + '\Visualizations'
+    path_lasso = path_vis + '\lasso'
+    path_elasticnet = path_vis + '\elasticnet'
+    plot_x = ['Lasso', 'ElasticNet']
+    plot_var = st.selectbox("Enter the ML model which you would like to visualize", plot_x).lower()
+    if plot_var == 'lasso':
+        path_ftimp = path_lasso + '_ftimp.png'
+        image = Image.open(path_ftimp)
+        st.image(image, caption='Lasso Feature Importance', width = 500, use_column_width=True )
+    if plot_var == 'elasticnet':
+        path_ftimp = path_elasticnet + '_ftimp.png'
+        image = Image.open(path_ftimp)
+        st.image(image, caption='ElasticNet Feature Importance', width = 350, use_column_width=True )
+    
+    # # Create a new figure
+    # fig = plt.figure()
+    # ax = fig.add_subplot()
+
+    # # Title case the feature for better display and create the visualizer
+    # #labels = list(map(lambda s: s.title(), features))
+    # viz = FeatureImportances(Lasso(), ax=ax, stack = False, relative=False)
+
+    # # Fit and show the feature importances
+    # viz.fit(x_train, y_train)
+    # viz.poof()
+
+
 
 elif page == 'About Us':
     st.write("Project developed by : ")
     image = Image.open('C:/Users/ANISH/Desktop/Facebook_profile.jpg')
     st.image(image, caption='Anish', width = 100, use_column_width=False )
 
- st.pydeck_chart(pdk.Deck(
-     map_style='mapbox://styles/mapbox/light-v9',
-     initial_view_state=pdk.ViewState(
-         latitude=37.76,
-         longitude=-122.4,
-         zoom=11,
-         pitch=50,
-     ),
-     layers=[
-         pdk.Layer(
-            'HexagonLayer',
-            data=df,
-            get_position='[lon, lat]',
-            radius=200,
-            elevation_scale=4,
-            elevation_range=[0, 1000],
-            pickable=True,
-            extruded=True,
-         ),
-         pdk.Layer(
-             'ScatterplotLayer',
-             data=df,
-             get_position='[lon, lat]',
-             get_color='[200, 30, 0, 160]',
-             get_radius=200,
-         ),
-     ],
- ))
