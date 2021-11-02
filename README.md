@@ -1,18 +1,17 @@
 
-## Visualizations on taxi trip durations
+# Visualizations on taxi trip durations
+The project aims to visualize the NYC Taxi Trip duration. Also dynamic predictions are made to user inputs basd on input variable used to train and deploy the models. 3-D interactive geo-spatial graphs are generated from with the use of pydeck ([Read more about Pydeck-streamlit API](https://docs.streamlit.io/library/api-reference/charts/st.pydeck_chart)).
 
->The ipynb file contains the tests and the actual code for the project with the all the visualizations<br>
-The streamlit app file (named streamlit_test) contains the code for the streamlit app
+# To run the streamlit app 
+1. Install the virtual environment ```pip install virtualenv```
+2. Start a Virtual Environment using the command ```virtualenv env```
+3. Install all dependencies ```pip install requirements.txt```
+4. Run the app by ```streamlit run streamlit_test.py```
 
-
-## To run the streamlit app 
->
-    1. Install all the requirements in a virtual environment from the requirements.txt present in the repository
-    2. Once installed run the streamlit app on the command line by typing streamlit run streamlit_test.py
-    3. The command line will gave a localhost http to see the app if the window does not automatically pop up
-
-![](Visualizations/cmd_run_streamlit.png)
-
-## This is what the app looks like right now
+<!-- ![](Visualizations/cmd_run_streamlit.png) --> 
+# App preview
 
 ![](Visualizations/app_screenshot_comp.png)
+
+# Author
+Anish S Ghiya (@anishsghiya)
